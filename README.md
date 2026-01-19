@@ -13,7 +13,6 @@ The codebase is organized into two primary Python files and utilizes external da
 This script serves as the HTTP entry point for the application. It handles server configuration, data loading, and request routing.
 
 - **Initialization & Data Loading:**
-
   - **Automated Asset Retrieval:** Checks for local existence of necessary files (databases, indices). If missing, it automatically downloads them from the GCP bucket (`bucket3224`) using `google.cloud.storage` or `gsutil` for bulk transfers.
   - **Inverted Index Loading:** Loads the Title, Body, and Anchor inverted indices into memory upon startup to ensure fast access.
   - **Scorer Initialization:** Pre-calculates global statistics (e.g., `term_total`) and initializes the BM25 scoring instance for the body index.
@@ -29,13 +28,11 @@ This script serves as the HTTP entry point for the application. It handles serve
 This module contains the core information retrieval logic, ranking algorithms, and data processing utilities.
 
 - **Search Logic (`search` function):**
-
   - **Parallel Execution:** Utilizes `ThreadPoolExecutor` to query the Title, Anchor, and Body indices concurrently, significantly reducing wall-clock latency.
   - **Result Merging:** Combines scores from the three indices using a weighted average (Title: 0.4, Body: 0.3, Anchor: 0.3). Matches in high-value fields (Title/Anchor) are given additional boost points.
   - **Popularity Re-ranking:** Incorporates PageView data to adjust final scores. To prevent popularity from overwhelming textual relevance, page views are log-normalized (`1 + log10(views)`).
 
 - **Ranking Algorithms:**
-
   - **BM25 (`BM25_from_index`):** The primary ranking function for body text. It is optimized to read only relevant posting lists and converts them to dictionaries for $O(1)$ lookup speed during scoring.
   - **Cosine Similarity:** Implements a Vector Space Model using TF-IDF and `sklearn`'s cosine similarity for the `/search_body` endpoint.
   - **Binary/Count Ranking:** Used for Title and Anchor searches, ranking documents by the number of distinct query terms they contain.
@@ -46,8 +43,8 @@ This module contains the core information retrieval logic, ranking algorithms, a
 
 ## Usage
 
-You can use the server with this query for example: "http://34.71.248.227:8080/search?query=information+retrieval"
-34.71.248.227 is the external ip of our instance.
+You can use the server with this query for example: "http://34.170.40.177:8080/search?query=information+retrieval"
+34.170.40.177 is the external ip of our instance.
 
 ## Dependencies
 
