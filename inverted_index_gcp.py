@@ -1,4 +1,5 @@
 import sys
+import io
 from collections import Counter, OrderedDict
 import itertools
 from itertools import islice, count, groupby
@@ -13,14 +14,36 @@ from google.cloud import storage
 from collections import defaultdict
 from contextlib import closing
 
-PROJECT_ID = 'YOUR-PROJECT-ID-HERE'
+PROJECT_ID = 'info-retrieval-project-480012'
 def get_bucket(bucket_name):
     return storage.Client(PROJECT_ID).bucket(bucket_name)
+
 
 def _open(path, mode, bucket=None):
     if bucket is None:
         return open(path, mode)
-    return bucket.blob(path).open(mode)
+
+    blob = bucket.blob(path)
+
+    if 'w' in mode:
+        # Wrapper class to handle writing to GCS with older libraries
+        class BlobWriter(io.BytesIO):
+            def __init__(self, blob):
+                super().__init__()
+                self._blob = blob  # This fixes the AttributeError
+
+            def close(self):
+                # Move to the beginning of the buffer and upload
+                self.seek(0)
+                self._blob.upload_from_file(self)
+                super().close()
+
+        return BlobWriter(blob)
+
+    elif 'r' in mode:
+        # Download content to memory for reading
+        content = blob.download_as_string()
+        return io.BytesIO(content)
 
 # Let's start with a small block size of 30 bytes just to test things out. 
 BLOCK_SIZE = 1999998
@@ -31,6 +54,7 @@ class MultiFileWriter:
         self._base_dir = Path(base_dir)
         self._name = name
         self._bucket = None if bucket_name is None else get_bucket(bucket_name)
+        self._base_dir.mkdir(parents=True, exist_ok=True)
         self._file_gen = (_open(str(self._base_dir / f'{name}_{i:03}.bin'), 
                                 'wb', self._bucket) 
                           for i in itertools.count())
